@@ -18,12 +18,13 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static ua.stamanker.Emoji.THUMB_DN;
 import static ua.stamanker.Emoji.THUMB_UP;
@@ -76,9 +77,12 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             Integer messageId = callbackQuery.getMessage().getMessageId();
 
             final String chatDir = chatId + "";
+            new File(chatDir).mkdir();
+            Map<String, Object> data = read(chatDir, messageId);
+            data.computeIfAbsent()
             final String msgDir = chatId + "/" + messageId;
             String userId = msgDir + "/" + callbackQuery.getMessage().getFrom().getId();
-            new File(chatDir).mkdir();
+
             new File(msgDir).mkdir();
             File userIdFile = new File(userId);
             if(userIdFile.exists()) {
@@ -120,6 +124,16 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             // ---
             editMessageText.setReplyMarkup(markupKeyboard);
             executeSomething(editMessageText);
+        }
+    }
+
+    private HashMap<String, Object> read (String chatDir, Integer messageId) throws IOException {
+        try {
+            byte[] bytes = Files.readAllBytes(Paths.get(chatDir + "/" + messageId + ".json"));
+            String s = new String(bytes);
+            return Application.OBJECTMAPPER.readValue(s, HashMap.class);
+        } catch (FileNotFoundException fnfe) {
+            return new HashMap<>();
         }
     }
 
