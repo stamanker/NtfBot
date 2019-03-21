@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -17,18 +18,21 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
+import org.telegram.telegrambots.meta.updateshandlers.SentCallback;
+import ua.stamanker.entities.MsgReactions;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.*;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 import static ua.stamanker.Emoji.THUMB_DN;
 import static ua.stamanker.Emoji.THUMB_UP;
 
+
+/**
+ *  User{id=675917208, firstName='Nuttyfi', isBot=true, lastName='null', userName='NuttyfiBot', languageCode='null'}
+ */
 public class NtfLongPollBot extends TelegramLongPollingBot {
 
     public static final long botPrivatechatId = 31540560L;
@@ -37,8 +41,31 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update updateIncome) {
         try {
             processUpdateReceived(updateIncome);
-        } catch (Exception e) {
-            e.printStackTrace();
+            CompletableFuture.runAsync(() -> {
+                try {
+                    getMeAsync(new SentCallback<User>() {
+                        @Override
+                        public void onResult(BotApiMethod<User> method, User response) {
+                            System.out.println("method = " + method);
+                            System.out.println("response = " + response);
+                        }
+
+                        @Override
+                        public void onError(BotApiMethod<User> method, TelegramApiRequestException apiException) {
+                            System.out.println("method = " + method);
+                        }
+
+                        @Override
+                        public void onException(BotApiMethod<User> method, Exception exception) {
+                            System.out.println("method = " + method);
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }}
+            );
+        } catch (Exception ew) {
+            ew.printStackTrace();
         }
     }
 
@@ -75,22 +102,18 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             CallbackQuery callbackQuery = updateIncome.getCallbackQuery();
             Long chatId = callbackQuery.getMessage().getChatId();
             Integer messageId = callbackQuery.getMessage().getMessageId();
+            Integer userId = callbackQuery.getMessage().getFrom().getId();
+            String buttonClicked = Utils.getBefore(callbackQuery.getData(), "-");
 
             final String chatDir = chatId + "";
             new File(chatDir).mkdir();
-            Map<String, Object> data = read(chatDir, messageId);
-            data.computeIfAbsent()
-            final String msgDir = chatId + "/" + messageId;
-            String userId = msgDir + "/" + callbackQuery.getMessage().getFrom().getId();
-
-            new File(msgDir).mkdir();
-            File userIdFile = new File(userId);
-            if(userIdFile.exists()) {
-                System.out.println("already voted");
+            MsgReactions data = read(chatDir, messageId);
+            if(!data.putForUser(userId, buttonClicked)) {
+                // already done
+                System.out.println("already done");
                 return;
-            } else {
-                createAndWrite2UserIdFile(userIdFile, Utils.getBefore(callbackQuery.getData(), "-"));
             }
+            save(chatDir, messageId, data);
 
             AnswerCallbackQuery answer = new AnswerCallbackQuery();
             answer.setCallbackQueryId(callbackQuery.getId());
@@ -127,13 +150,18 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         }
     }
 
-    private HashMap<String, Object> read (String chatDir, Integer messageId) throws IOException {
+    private void save(String chatDir, Integer msgId, MsgReactions data) throws IOException {
+        String dataTxt = Application.OBJECTMAPPER.writeValueAsString(data);
+        Files.write(Paths.get(chatDir + "/" + msgId + ".json"),dataTxt.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+    }
+
+    private MsgReactions read (String chatDir, Integer messageId) throws IOException {
         try {
             byte[] bytes = Files.readAllBytes(Paths.get(chatDir + "/" + messageId + ".json"));
             String s = new String(bytes);
-            return Application.OBJECTMAPPER.readValue(s, HashMap.class);
-        } catch (FileNotFoundException fnfe) {
-            return new HashMap<>();
+            return Application.OBJECTMAPPER.readValue(s, MsgReactions.class);
+        } catch (FileNotFoundException | NoSuchFileException fnfe) {
+            return new MsgReactions();
         }
     }
 
@@ -201,7 +229,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
      * @param msg
      */
     public synchronized void sendMsg(String chatId, String msg) {
-        System.out.println("chatId = " + chatId + ", msg = " + msg);
+        System.out.println("send to chatId = " + chatId + ", msg = " + msg);
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableNotification();
         sendMessage.enableMarkdown(true);
