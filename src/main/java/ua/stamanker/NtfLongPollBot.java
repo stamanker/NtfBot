@@ -41,32 +41,36 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update updateIncome) {
         try {
             processUpdateReceived(updateIncome);
-            CompletableFuture.runAsync(() -> {
-                try {
-                    getMeAsync(new SentCallback<User>() {
-                        @Override
-                        public void onResult(BotApiMethod<User> method, User response) {
-                            System.out.println("method = " + method);
-                            System.out.println("response = " + response);
-                        }
-
-                        @Override
-                        public void onError(BotApiMethod<User> method, TelegramApiRequestException apiException) {
-                            System.out.println("method = " + method);
-                        }
-
-                        @Override
-                        public void onException(BotApiMethod<User> method, Exception exception) {
-                            System.out.println("method = " + method);
-                        }
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }}
-            );
+            //getInfoAboutMe();
         } catch (Exception ew) {
             ew.printStackTrace();
         }
+    }
+
+    private void getInfoAboutMe() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                getMeAsync(new SentCallback<User>() {
+                    @Override
+                    public void onResult(BotApiMethod<User> method, User response) {
+                        System.out.println("method = " + method);
+                        System.out.println("response = " + response);
+                    }
+
+                    @Override
+                    public void onError(BotApiMethod<User> method, TelegramApiRequestException apiException) {
+                        System.out.println("method = " + method);
+                    }
+
+                    @Override
+                    public void onException(BotApiMethod<User> method, Exception exception) {
+                        System.out.println("method = " + method);
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }}
+        );
     }
 
     public void processUpdateReceived(Update updateIncome) throws Exception {
