@@ -1,7 +1,6 @@
 package ua.stamanker;
 
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -19,15 +18,12 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 import org.telegram.telegrambots.meta.updateshandlers.SentCallback;
-import ua.stamanker.entities.MsgReactions;
+import ua.stamanker.entities.MsgData;
 
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-
-import static ua.stamanker.Emoji.THUMB_DN;
-import static ua.stamanker.Emoji.THUMB_UP;
 
 
 /**
@@ -42,6 +38,8 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         try {
             processUpdateReceived(updateIncome);
             //getInfoAboutMe();
+        } catch (IgnoreException ice) {
+            System.err.println(ice.getMessage());
         } catch (Exception ew) {
             ew.printStackTrace();
         }
@@ -74,16 +72,18 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     }
 
     public void processUpdateReceived(Update updateIncome) throws Exception {
+        MsgData data;
+        Integer messageId;
+        Long chatId;
         if(updateIncome.hasMessage()) {
             Message message1 = updateIncome.getMessage();
             String message = message1.getText();
+            messageId = updateIncome.getMessage().getMessageId();
+            chatId = updateIncome.getMessage().getChatId();
+            data = new MsgData().init();
             if(message1.getChatId() != botPrivatechatId) {
-                System.out.println("# ignore other chats messages: " + message1.getChatId());
-                return;
-            } else {
-                System.out.println("chatId = " + message1.getChatId());
+                throw new IgnoreException("# ignore other chat: " + chatId);
             }
-            sendMsg(message1.getChatId().toString(), message);
             if (message1.hasPhoto()) {
                 int num = message1.getPhoto().size();
                 String filePath;
@@ -94,85 +94,81 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                 }
                 File f = downloadFile(filePath);
                 System.out.println("f = " + f.getAbsolutePath());
-                //sendPhoto(message1.getChatId()+"", TgFile.getFileUrl(getBotToken(), filePath));
-                sendPhoto(message1.getChatId() + "", f);
+                SendPhoto sendPhoto = createSendPhoto(botTestChatId + "", f);
+                setButtons(data, sendPhoto);
+                executeSomething(sendPhoto);
                 if (!f.delete()) {
                     System.out.println("File not deleted: " + f.getAbsolutePath());
                 }
             }
+            SendMessage sendMessage = createSendMessage(botTestChatId+"", message);
+            setButtons(data, sendMessage);
+            executeSomething(sendMessage);
         } else if (updateIncome.hasCallbackQuery()) {
-            //downloadFile("https://api.telegram.org/bot"+getBotToken()+"/"+updateIncome.getFilePath());
-
             CallbackQuery callbackQuery = updateIncome.getCallbackQuery();
-            Long chatId = callbackQuery.getMessage().getChatId();
-            Integer messageId = callbackQuery.getMessage().getMessageId();
+            chatId = callbackQuery.getMessage().getChatId();
+            messageId = callbackQuery.getMessage().getMessageId();
             Integer userId = callbackQuery.getMessage().getFrom().getId();
-            String buttonClicked = Utils.getBefore(callbackQuery.getData(), "-");
+            String buttonClicked = callbackQuery.getData();
 
-            final String chatDir = chatId + "";
-            new File(chatDir).mkdir();
-            MsgReactions data = read(chatDir, messageId);
-            if(!data.putForUser(userId, buttonClicked)) {
-                // already done
-                System.out.println("already done");
-                return;
-            }
-            save(chatDir, messageId, data);
+            new File(chatId+"").mkdir();
+            data = read(chatId+"", messageId);
+            data.registerNewButtonClick(userId, buttonClicked);
 
-            AnswerCallbackQuery answer = new AnswerCallbackQuery();
-            answer.setCallbackQueryId(callbackQuery.getId());
-            answer.setText("response to callback " + callbackQuery.getId());
-            //MessageEntity messageEntity = callbackQuery.getMessage().getEntities().get(0);
+//            AnswerCallbackQuery answer = new AnswerCallbackQuery();
+//            answer.setCallbackQueryId(callbackQuery.getId());
+//            answer.setText("response to callback " + callbackQuery.getId());
 
             EditMessageText editMessageText = new EditMessageText();
             editMessageText.setMessageId(messageId);
-            editMessageText.setChatId(chatId);
+            editMessageText.setChatId(botTestChatId);
             editMessageText.setText(callbackQuery.getMessage().getText());
 
-            System.out.println("answer = " + answer.getText());
-
-            int a = 0;
-            int b = 0;
-            Integer num = Utils.getNum(callbackQuery.getData(), "-");
-            if(callbackQuery.getData().startsWith("A")) {
-                a = ++num;
-            } else {
-                b = ++num;
-            }
-
-            List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
-            List<InlineKeyboardButton> buttonsList = new ArrayList<>();
-            buttonsList.add(new InlineKeyboardButton(THUMB_UP + a).setCallbackData("A-"+a));
-            buttonsList.add(new InlineKeyboardButton(THUMB_DN + b).setCallbackData("B-"+b));
-            buttons.add(buttonsList);
-
-            InlineKeyboardMarkup markupKeyboard = new InlineKeyboardMarkup();
-            markupKeyboard.setKeyboard(buttons);
-            // ---
-            editMessageText.setReplyMarkup(markupKeyboard);
+            setButtons(data, editMessageText);
             executeSomething(editMessageText);
+        } else {
+            throw new IgnoreException("Ignore something other...");
+        }
+        save(chatId+"", messageId, data);
+    }
+
+    private void setButtons(MsgData data, Object event) {
+        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
+        List<InlineKeyboardButton> buttonsList = new ArrayList<>();
+        List<Map.Entry<String, Integer>> buttonsAndCount = data.getButtonsAndCount();
+        for (int i = 0; i < buttonsAndCount.size(); i++) {
+            Map.Entry<String, Integer> btn = buttonsAndCount.get(i);
+            Integer value = btn.getValue();
+            String text = btn.getKey() + " " + (value == 0 ? "" : value);
+            buttonsList.add(new InlineKeyboardButton(text).setCallbackData(btn.getKey()));
+        }
+        buttons.add(buttonsList);
+        InlineKeyboardMarkup replyMarkup = new InlineKeyboardMarkup().setKeyboard(buttons);
+        if(event instanceof EditMessageText) {
+            ((EditMessageText)event).setReplyMarkup(replyMarkup);
+        } else if(event instanceof SendMessage) {
+            ((SendMessage)event).setReplyMarkup(replyMarkup);
+        } else if(event instanceof SendPhoto) {
+            ((SendPhoto)event).setReplyMarkup(replyMarkup);
         }
     }
 
-    private void save(String chatDir, Integer msgId, MsgReactions data) throws IOException {
+    private void save(String chatDir, Integer msgId, MsgData data) throws IOException {
         String dataTxt = Application.OBJECTMAPPER.writeValueAsString(data);
-        Files.write(Paths.get(chatDir + "/" + msgId + ".json"),dataTxt.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+        Files.write(Paths.get(chatDir + "/" + msgId + ".json"),dataTxt.getBytes(),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE
+        );
     }
 
-    private MsgReactions read (String chatDir, Integer messageId) throws IOException {
+    private MsgData read (String chatDir, Integer messageId) throws IOException {
         try {
             byte[] bytes = Files.readAllBytes(Paths.get(chatDir + "/" + messageId + ".json"));
             String s = new String(bytes);
-            return Application.OBJECTMAPPER.readValue(s, MsgReactions.class);
+            return Application.OBJECTMAPPER.readValue(s, MsgData.class);
         } catch (FileNotFoundException | NoSuchFileException fnfe) {
-            return new MsgReactions();
-        }
-    }
-
-    private void createAndWrite2UserIdFile(File userIdFile, String answer) throws IOException {
-        //userIdFile.createNewFile();
-        try(BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(userIdFile))) {
-            bufferedWriter.write(answer);
+            return new MsgData().init();
         }
     }
 
@@ -185,20 +181,10 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendPhoto(String chatId, String url) {
-        System.out.println("url = " + url);
-        SendPhoto sendPhoto = new SendPhoto()
-                .setChatId(chatId)
-                .setPhoto(url);
-        executeSomething(sendPhoto);
-    }
-
-    private void sendPhoto(String chatId, File file) {
-        System.out.println("send file = " + file.getAbsolutePath());
-        SendPhoto sendPhoto = new SendPhoto()
-                .setChatId(chatId)
-                .setPhoto(file);
-        executeSomething(sendPhoto);
+    private SendPhoto createSendPhoto(String chatId, File file) {
+        return new SendPhoto()
+                    .setChatId(chatId)
+                    .setPhoto(file);
     }
 
     private void executeSomething(SendPhoto msg) {
@@ -212,9 +198,9 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
 
     private void executeSomething(SendMessage msg) {
         try {
+            System.out.println("msg = " + msg);
             execute(msg);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -223,47 +209,18 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         try {
             execute(msg);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
 
-    /**
-     * @param chatId id чата
-     * @param msg
-     */
-    public synchronized void sendMsg(String chatId, String msg) {
-        System.out.println("send to chatId = " + chatId + ", msg = " + msg);
+    private SendMessage createSendMessage(String chatId, String msg) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableNotification();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(chatId);
         sendMessage.enableHtml(true);
-        sendMessage.setText("<b>"+msg+"</b>");
-        setInline(sendMessage);
-        executeSomething(sendMessage);
-    }
-
-    //    private void executeSomething(BotApiMethod m) {
-//        try {
-//            execute(m);
-//        } catch (TelegramApiException e) {
-//            e.printStackTrace();
-//            throw new RuntimeException(e);
-//        }
-//    }
-//
-    private void setInline(SendMessage sendMessage) {
-        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
-        List<InlineKeyboardButton> buttons1 = new ArrayList<>();
-        buttons1.add(new InlineKeyboardButton().setText(THUMB_UP).setCallbackData("A-0"));
-        buttons1.add(new InlineKeyboardButton().setText(THUMB_DN).setCallbackData("B-0"));
-        buttons.add(buttons1);
-
-        InlineKeyboardMarkup markupKeyboard = new InlineKeyboardMarkup();
-        markupKeyboard.setKeyboard(buttons);
-        // ---
-        sendMessage.setReplyMarkup(markupKeyboard);
+        sendMessage.setText(msg);
+        return sendMessage;
     }
 
     private void addButtons(SendMessage sendMessage) {
