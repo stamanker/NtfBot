@@ -21,13 +21,42 @@ public class MsgData {
     }
 
     public void registerNewButtonClick(Integer userId, String buttonClicked) {
-        Set<String> userButtonClicked = userReactions.computeIfAbsent("user-" + userId, x -> new HashSet<>() );
-        if(userButtonClicked.contains(buttonClicked)) {
-            userButtonClicked.remove(buttonClicked);
-            buttons.put(buttonClicked, buttons.get(buttonClicked)-1);
+        Set<String> userButtonClicked = userReactions.computeIfAbsent("user-" + userId, x -> new HashSet<>());
+        if(true) {
+            if (!userButtonClicked.isEmpty()) {
+                Iterator<String> iterator = userButtonClicked.iterator();
+                String wasBefore = iterator.next();
+                iterator.remove();
+                System.out.println("wasBefore = " + wasBefore + " buttonClicked = " + buttonClicked);
+                buttons.compute(wasBefore, (x, v) -> {
+                    System.out.println("x = " + x);
+                    System.out.println("v = " + v);
+                    return --v;
+                });
+                if(!wasBefore.equals(buttonClicked)) {
+                    userButtonClicked.add(buttonClicked);
+                    buttons.compute(buttonClicked, (x, v) -> {
+                        System.out.println("x = " + x);
+                        System.out.println("v = " + v);
+                        return ++v;
+                    });
+                }
+            } else {
+                userButtonClicked.add(buttonClicked);
+                buttons.compute(buttonClicked, (x, v) -> {
+                    System.out.println("x = " + x);
+                    System.out.println("v = " + v);
+                    return ++v;
+                });
+            }
         } else {
-            userButtonClicked.add(buttonClicked);
-            buttons.put(buttonClicked, buttons.get(buttonClicked)+1);
+            if (userButtonClicked.contains(buttonClicked)) {
+                userButtonClicked.remove(buttonClicked);
+                buttons.put(buttonClicked, buttons.get(buttonClicked) - 1);
+            } else {
+                userButtonClicked.add(buttonClicked);
+                buttons.put(buttonClicked, buttons.get(buttonClicked) + 1);
+            }
         }
     }
 
