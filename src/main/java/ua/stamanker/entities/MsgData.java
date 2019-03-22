@@ -6,10 +6,14 @@ import static ua.stamanker.Emoji.*;
 
 public class MsgData {
 
+    public Date created;
+
     public Map<String, Integer> buttons = new LinkedHashMap<>();
     public Map<String, Set<String>> userReactions = new HashMap<>();
+    public Set<String> voters = new HashSet<>();
 
     public MsgData init() {
+        created = new Date();
         buttons.put(THUMB_UP, 0);
         buttons.put(OK, 0);
         buttons.put(THUMB_DN, 0);
@@ -20,9 +24,10 @@ public class MsgData {
         return this;
     }
 
-    public void registerNewButtonClick(Integer userId, String buttonClicked) {
+    public void registerNewButtonClick(Integer userId, String username, String buttonClicked) {
+        voters.add(username);
         Set<String> userButtonClicked = userReactions.computeIfAbsent("user-" + userId, x -> new HashSet<>());
-        if(true) {
+        if(true) { //user can vote only for 1 button
             if (!userButtonClicked.isEmpty()) {
                 Iterator<String> iterator = userButtonClicked.iterator();
                 String wasBefore = iterator.next();

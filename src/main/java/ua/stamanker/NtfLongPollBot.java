@@ -1,5 +1,6 @@
 package ua.stamanker;
 
+import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -28,13 +29,16 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import static ua.stamanker.Chats.botPrivatechatId;
+import static ua.stamanker.Chats.chatId2Post2;
 
-/**
- *  User{id=675917208, firstName='Nuttyfi', isBot=true, lastName='null', userName='NuttyfiBot', languageCode='null'}
- */
 public class NtfLongPollBot extends TelegramLongPollingBot {
 
-    public static final long botPrivatechatId = 31540560L;
+    private Chats chats;
+
+    public NtfLongPollBot(Chats chats) {
+        this.chats = chats;
+    }
 
     @Override
     public void onUpdateReceived(Update updateIncome) {
@@ -74,7 +78,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         );
     }
 
-    public void processUpdateReceived(Update updateIncome) throws Exception {
+    public synchronized void processUpdateReceived(Update updateIncome) throws Exception {
         MsgData data;
         Integer messageId;
         Long chatId;
@@ -83,6 +87,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             String message = message1.getText();
             messageId = updateIncome.getMessage().getMessageId();
             chatId = updateIncome.getMessage().getChatId();
+            System.out.println("chatId = " + chatId + " / " + chats.getChatById(chatId));
             data = new MsgData().init();
             if(message1.getChatId() != botPrivatechatId) {
                 throw new IgnoreException("# ignore other chat: " + chatId);
@@ -97,14 +102,14 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                 }
                 File f = downloadFile(filePath);
                 System.out.println("f = " + f.getAbsolutePath());
-                SendPhoto sendPhoto = createSendPhoto(botTestChatId + "", f);
+                SendPhoto sendPhoto = createSendPhoto(chatId2Post2 + "", f);
                 setButtons(data, sendPhoto);
                 executeSomething(sendPhoto);
                 if (!f.delete()) {
                     System.out.println("File not deleted: " + f.getAbsolutePath());
                 }
             } else {
-                SendMessage sendMessage = createSendMessage(botTestChatId + "", message);
+                SendMessage sendMessage = createSendMessage(chatId2Post2 + "", message);
                 setButtons(data, sendMessage);
                 executeSomething(sendMessage);
             }
@@ -112,16 +117,18 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             CallbackQuery callbackQuery = updateIncome.getCallbackQuery();
             chatId = callbackQuery.getMessage().getChatId();
             messageId = callbackQuery.getMessage().getMessageId();
-            Integer userId = Optional.ofNullable(callbackQuery.getMessage().getFrom()).map(u -> u.getId()).orElse(-1);
+            Integer userId = Optional.ofNullable(callbackQuery.getFrom()).map(u -> u.getId()).orElse(-1);
+            System.out.println("chatId = " + chatId + ", userId = " + userId + ", name = " + callbackQuery.getFrom().getUserName());
             String buttonClicked = callbackQuery.getData();
 
+            // process...
             new File(chatId+"").mkdir();
             data = read(chatId+"", messageId);
-            data.registerNewButtonClick(userId, buttonClicked);
+            data.registerNewButtonClick(userId, callbackQuery.getFrom().getUserName(), buttonClicked);
 
             if (callbackQuery.getMessage().getPhoto()!=null && !callbackQuery.getMessage().getPhoto().isEmpty()) {
                 EditMessageMedia editMessageMedia = new EditMessageMedia()
-                    .setChatId(botTestChatId)
+                    .setChatId(chatId)
                     .setMessageId(messageId);
                 InputMediaPhoto media = new InputMediaPhoto();
                 media.setMedia(callbackQuery.getMessage().getPhoto().get(0).getFileId());
@@ -131,13 +138,13 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             } else {
                 EditMessageText editMessageText = new EditMessageText();
                 editMessageText.setMessageId(messageId);
-                editMessageText.setChatId(botTestChatId);
+                editMessageText.setChatId(chatId);
                 editMessageText.setText(callbackQuery.getMessage().getText());
                 setButtons(data, editMessageText);
                 executeSomething(editMessageText);
             }
         } else {
-            throw new IgnoreException("Ignore something other...");
+            throw new IgnoreException("Ignore anything different for now...");
         }
         save(chatId+"", messageId, data);
     }
