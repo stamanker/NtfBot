@@ -10,9 +10,9 @@ public class Application {
     public static void main(String[] args) {
         ApiContextInitializer.init();
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
-        Chats chats = new Chats();
         FileWorker fileWorker = new FileWorker();
         Settings settings = fileWorker.readSettings().validate();
+        Chats chats = new Chats(settings);
         try {
             telegramBotsApi.registerBot(new NtfLongPollBot(chats, fileWorker, settings));
         } catch (TelegramApiRequestException e) {
