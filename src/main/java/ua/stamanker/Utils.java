@@ -21,4 +21,12 @@ public class Utils {
         }
         return data;
     }
+
+    public static String getAfter(String data, String a) {
+        int i = data.indexOf(a);
+        if(i>-1) {
+            return data.substring(i+a.length());
+        }
+        return data;
+    }
 }

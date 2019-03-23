@@ -23,8 +23,8 @@ public class FileWorker {
     public FileWorker() {
         OBJECTMAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     }
-    public void save(String subDir, Integer msgId, Object data) {
-        save(subDir, msgId+"", data);
+    public void save(String chatId, Integer msgId, Object data) {
+        save(chatId, msgId+"", data);
     }
 
     public void save(String subDir, String fileName, Object data) {
@@ -57,8 +57,7 @@ public class FileWorker {
     public MsgData read (long chatId, Integer messageId) {
         try {
             String chatDir = chatId + "";
-            new File(chatId+"").mkdir();
-            byte[] bytes = Files.readAllBytes(Paths.get(chatDir + "/" + messageId + ".json"));
+            byte[] bytes = Files.readAllBytes(Paths.get(dataDir + "/" + chatDir + "/" + messageId + EXT));
             String s = new String(bytes);
             return deserialize(s, MsgData.class);
         } catch (FileNotFoundException | NoSuchFileException fnfe) {
