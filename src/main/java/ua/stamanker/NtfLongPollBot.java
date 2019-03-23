@@ -270,12 +270,12 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "Nuttyfi";
+        return "";
     }
 
     @Override
     public String getBotToken() {
-        return "675917208:AAExq8Jt51Qefj4JSnU0Zu8L3ZA0a6MGZ6E";
+        return "";
     }
 
     @Override
