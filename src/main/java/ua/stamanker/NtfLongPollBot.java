@@ -101,7 +101,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     }
 
     public synchronized void processUpdateReceived(Update updateIncome) throws Exception {
-        System.out.println(new Date());
+        System.out.println(" ------------------------ " + new Date());
         MsgData data;
         Integer messageId;
         Long chatId;
@@ -109,7 +109,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         if (updateIncome.hasMessage()) {
             Message message1 = updateIncome.getMessage();
             String msgText = message1.getText();
-            messageId = message1.getMessageId();
+            //messageId = message1.getMessageId();
             userId = message1.getFrom().getId();
             chatId = message1.getChatId();
             if (msgText != null && msgText.startsWith("/")) {
@@ -152,33 +152,33 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                     filePath = message1.getPhoto().get(num - 1).getFilePath();
                 }
                 File f = downloadFile(filePath);
-                System.out.println("file = " + f.getAbsolutePath());
+                System.out.println("\tfile = " + f.getAbsolutePath());
                 SendPhoto sendPhoto = createSendPhoto(chat2Post.chatId, f);
                 setButtons(data, sendPhoto);
                 Message executeRspns = execute(sendPhoto);
                 fileWorker.save(data.chatId2Store, executeRspns.getMessageId(), data);
                 if (!f.delete()) {
-                    System.out.println("File not deleted: " + f.getAbsolutePath());
+                    System.out.println("\tFile not deleted: " + f.getAbsolutePath());
                 }
             } else {
                 SendMessage sendMessage = createSendMessage(chat2Post.chatId, msgText);
                 setButtons(data, sendMessage);
                 Message executeRspns = execute(sendMessage);
-                System.out.println("response = " + executeRspns);
+                System.out.println("\tresponse = " + executeRspns);
                 fileWorker.save(data.chatId2Store, executeRspns.getMessageId(), data);
             }
         } else if (updateIncome.hasCallbackQuery()) {
             CallbackQuery callbackQuery = updateIncome.getCallbackQuery();
             chatId = callbackQuery.getMessage().getChatId();
             messageId = callbackQuery.getMessage().getMessageId();
-            userId = Optional.ofNullable(callbackQuery.getFrom()).map(User::getId).orElse(-1);
-            System.out.println("chatId = " + chatId + ", userId = " + userId + ", name = " + callbackQuery.getFrom().getUserName() + ", " +
-                    callbackQuery.getFrom().getFirstName() + " " + callbackQuery.getFrom().getLastName());
+            User from = callbackQuery.getFrom();
+            userId = Optional.ofNullable(from).map(User::getId).orElse(-1);
+            System.out.println("\tchatId = " + chatId + ", msgId = " + messageId + " | userId = " + userId + ", name = " + from.getUserName() + ", " + from.getFirstName() + " " + from.getLastName());
             String buttonClicked = callbackQuery.getData();
 
             // process...
             data = fileWorker.read(chatId, messageId).setChatId2Store(chatId);
-            data.registerNewButtonClick(userId, callbackQuery.getFrom().getUserName(), buttonClicked);
+            data.registerNewButtonClick(userId, from.getUserName(), buttonClicked);
 
             if (callbackQuery.getMessage().getPhoto() != null && !callbackQuery.getMessage().getPhoto().isEmpty()) {
                 EditMessageMedia editMessageMedia = new EditMessageMedia()
@@ -199,7 +199,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             }
             fileWorker.save(data.chatId2Store, messageId, data);
         } else {
-            throw new IgnoreException("Ignore anything different for now...");
+            throw new IgnoreException("*** Ignore anything different for now...");
         }
     }
 

@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Date;
 
 public class FileWorker {
 
@@ -25,6 +26,9 @@ public class FileWorker {
     }
 
     public void save(long chatId, Integer msgId, Object data) {
+        if(data instanceof MsgData) {
+            ((MsgData) data).updated = new Date();
+        }
         save(chatId+"", msgId+"", data);
     }
 

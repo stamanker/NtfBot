@@ -1,5 +1,6 @@
 package ua.stamanker.entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.*;
@@ -8,8 +9,10 @@ import static ua.stamanker.Emoji.*;
 
 public class MsgData {
 
-    //TODO date format
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     public Date created;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    public Date updated;
 
     public Map<String, Integer> buttons = new LinkedHashMap<>();
     public Map<String, Set<String>> userReactions = new HashMap<>();
