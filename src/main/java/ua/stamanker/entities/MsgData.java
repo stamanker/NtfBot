@@ -32,7 +32,7 @@ public class MsgData {
         return this;
     }
 
-    public MsgData init() {
+    public MsgData initDefault() {
         created = new Date();
         buttons.put(THUMB_UP, 0);
         buttons.put(OK, 0);
@@ -45,7 +45,7 @@ public class MsgData {
     }
 
     public void registerNewButtonClick(Integer userId, String username, String buttonClicked) {
-        System.out.println("userId = [" + userId + "], username = [" + username + "], buttonClicked = [" + buttonClicked + "]");
+        System.out.println("\tuserId = [" + userId + "], username = [" + username + "], buttonClicked = [" + buttonClicked + "]");
         voters.add(username);
         Set<String> userButtonClicked = userReactions.computeIfAbsent("user-" + userId, x -> new HashSet<>());
         if(true) { //user can vote only for 1 button
@@ -53,7 +53,7 @@ public class MsgData {
                 Iterator<String> iterator = userButtonClicked.iterator();
                 String wasBefore = iterator.next();
                 iterator.remove();
-                System.out.println("wasBefore = " + wasBefore + " buttonClicked = " + buttonClicked);
+                System.out.println("\twasBefore = " + wasBefore + " buttonClicked = " + buttonClicked);
                 buttons.compute(wasBefore, (x, v) -> --v);
                 if(!wasBefore.equals(buttonClicked)) {
                     userButtonClicked.add(buttonClicked);

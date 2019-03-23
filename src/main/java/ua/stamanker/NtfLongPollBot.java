@@ -177,7 +177,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             String buttonClicked = callbackQuery.getData();
 
             // process...
-            data = fileWorker.read(chatId, messageId).setChatId2Store(chatId);
+            data = Optional.ofNullable(fileWorker.read(chatId, messageId).setChatId2Store(chatId)).orElse(new MsgData().initDefault());
             data.registerNewButtonClick(userId, from.getUserName(), buttonClicked);
 
             if (callbackQuery.getMessage().getPhoto() != null && !callbackQuery.getMessage().getPhoto().isEmpty()) {

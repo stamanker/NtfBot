@@ -66,7 +66,7 @@ public class FileWorker {
             String s = new String(bytes);
             return deserialize(s, MsgData.class);
         } catch (FileNotFoundException | NoSuchFileException fnfe) {
-            return new MsgData().init();
+            return null;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -82,7 +82,7 @@ public class FileWorker {
             String json = new String(Files.readAllBytes(Paths.get(settingsPath)));
             return deserialize(json, Settings.class);
         } catch (IOException e) {
-            System.err.println("Error while reading settings: " + e.getMessage());
+            System.err.println("*** Error while reading settings: " + e.getMessage());
             Settings settings = new Settings();
             save(null, "settings", settings);
             return settings;
