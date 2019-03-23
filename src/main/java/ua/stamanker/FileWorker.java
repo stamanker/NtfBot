@@ -23,14 +23,15 @@ public class FileWorker {
     public FileWorker() {
         OBJECTMAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     }
-    public void save(String chatId, Integer msgId, Object data) {
-        save(chatId, msgId+"", data);
+
+    public void save(long chatId, Integer msgId, Object data) {
+        save(chatId+"", msgId+"", data);
     }
 
     public void save(String subDir, String fileName, Object data) {
         try {
             String dataTxt = OBJECTMAPPER.writeValueAsString(data);
-            writeFile(subDir, fileName+"", dataTxt);
+            writeFile(subDir, fileName, dataTxt);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -81,6 +82,15 @@ public class FileWorker {
             Settings settings = new Settings();
             save(null, "settings", settings);
             return settings;
+        }
+    }
+
+    public void saveSettings(Settings settings) {
+        try {
+            String json = OBJECTMAPPER.writeValueAsString(settings);
+            writeFile(null, "settings", json);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

@@ -1,6 +1,20 @@
 package ua.stamanker;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.entity.BufferedHttpEntity;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
+import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.facilities.TelegramHttpClientBuilder;
+import org.telegram.telegrambots.meta.ApiContext;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
@@ -20,17 +34,23 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiValidationException;
 import org.telegram.telegrambots.meta.updateshandlers.SentCallback;
 import ua.stamanker.entities.MsgData;
 import ua.stamanker.entities.Settings;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import static org.telegram.telegrambots.Constants.SOCKET_TIMEOUT;
+
 public class NtfLongPollBot extends TelegramLongPollingBot {
 
-    public static final String COMMAND_2CHAT = "2chat:";
+    public static final String COMMAND_2CHAT = "/chat:";
+    public static final String SET_BUTTONS = "/set buttons:";
+    public static final String SET_BUTTONS_DFLT = "/set buttons default:";
     private final Settings settings;
     private final Chats chats;
     private final FileWorker fileWorker;
@@ -55,27 +75,28 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
 
     private void getInfoAboutMe() {
         CompletableFuture.runAsync(() -> {
-            try {
-                getMeAsync(new SentCallback<User>() {
-                    @Override
-                    public void onResult(BotApiMethod<User> method, User response) {
-                        System.out.println("method = " + method);
-                        System.out.println("response = " + response);
-                    }
+                    try {
+                        getMeAsync(new SentCallback<User>() {
+                            @Override
+                            public void onResult(BotApiMethod<User> method, User response) {
+                                System.out.println("method = " + method);
+                                System.out.println("response = " + response);
+                            }
 
-                    @Override
-                    public void onError(BotApiMethod<User> method, TelegramApiRequestException apiException) {
-                        System.out.println("method = " + method);
-                    }
+                            @Override
+                            public void onError(BotApiMethod<User> method, TelegramApiRequestException apiException) {
+                                System.out.println("method = " + method);
+                            }
 
-                    @Override
-                    public void onException(BotApiMethod<User> method, Exception exception) {
-                        System.out.println("method = " + method);
+                            @Override
+                            public void onException(BotApiMethod<User> method, Exception exception) {
+                                System.out.println("method = " + method);
+                            }
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-            }}
+                }
         );
     }
 
@@ -85,76 +106,115 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         Integer messageId;
         Long chatId;
         Integer userId;
-        if(updateIncome.hasMessage()) {
+        if (updateIncome.hasMessage()) {
             Message message1 = updateIncome.getMessage();
             String msgText = message1.getText();
-            messageId = updateIncome.getMessage().getMessageId();
-            userId = updateIncome.getMessage().getFrom().getId();
-            chatId = updateIncome.getMessage().getChatId();
-            if(chats.isPrivateBotChat(chatId) && msgText!=null && msgText.startsWith(COMMAND_2CHAT)) {
-                String chat2Store = Utils.getAfter(msgText, COMMAND_2CHAT);
-                chats.storePost2ChatSetting(userId, chat2Store);
+            messageId = message1.getMessageId();
+            userId = message1.getFrom().getId();
+            chatId = message1.getChatId();
+            if (msgText != null && msgText.startsWith("/")) {
+                System.out.println(msgText);
+                String responseMsg;
+                if (msgText.startsWith(COMMAND_2CHAT)) {
+                    long chat2Store = Long.parseLong(Utils.getAfter(msgText, COMMAND_2CHAT).trim());
+                    chats.store2Post(userId, chat2Store, null);
+                    responseMsg = "Accepted: will send next message to chat " + chat2Store + "/" + chats.getChatNameById(chat2Store);
+                } else if (msgText.startsWith(SET_BUTTONS)) {
+                    String smilesRaw = Utils.getAfter(msgText, SET_BUTTONS);
+                    List<String> buttons = getButtonsFromText(smilesRaw);
+                    chats.store2Post(userId, null, buttons);
+                    responseMsg = "Set buttons for next post from " + message1.getFrom() + "/" + message1.getFrom().getUserName() + ": " + buttons + ";" + chats.getChat2RePost(userId);
+                } else if (msgText.startsWith(SET_BUTTONS_DFLT)) {
+                    String smilesRaw = Utils.getAfter(msgText, SET_BUTTONS_DFLT);
+                    List<String> buttons = getButtonsFromText(smilesRaw);
+                    chats.storeDefaultButtons(userId, null, buttons);
+                    responseMsg = "x";
+                } else {
+                    responseMsg = "Command not recognized: " + msgText;
+                }
+
+                executeSomething(createSendMessage(chatId, responseMsg));
                 return;
             }
             System.out.println("chatId = " + chatId + " / " + chats.getChatNameById(chatId));
-            data = new MsgData().init();
-            if(message1.getChatId() != chats.getPrivateChatId()) {
-                throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatNameById(chatId));
-            }
+//            if (message1.getChatId() != chats.getPrivateChatId()) {
+//                throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatNameById(chatId));
+//            }
+            // -------------------------------------------------------- IT'S TIME 2 REFACTOR
+            Chats.X chat2Post = chats.getChat2RePostAndRemove(userId);
+            data = new MsgData().initButtons(chat2Post.buttons).setChatId2Store(chat2Post.chatId);
             if (message1.hasPhoto()) {
                 int num = message1.getPhoto().size();
                 String filePath;
-                if(!message1.getPhoto().get(num - 1).hasFilePath()) {
+                if (!message1.getPhoto().get(num - 1).hasFilePath()) {
                     filePath = requestFilePath(message1.getPhoto().get(num - 1).getFileId());
                 } else {
                     filePath = message1.getPhoto().get(num - 1).getFilePath();
                 }
                 File f = downloadFile(filePath);
-                System.out.println("f = " + f.getAbsolutePath());
-                SendPhoto sendPhoto = createSendPhoto(chats.getChat2RePostAsStr(userId), f);
+                System.out.println("file = " + f.getAbsolutePath());
+                SendPhoto sendPhoto = createSendPhoto(chat2Post.chatId, f);
                 setButtons(data, sendPhoto);
-                executeSomething(sendPhoto);
+                Message executeRspns = execute(sendPhoto);
+                fileWorker.save(data.chatId2Store, executeRspns.getMessageId(), data);
                 if (!f.delete()) {
                     System.out.println("File not deleted: " + f.getAbsolutePath());
                 }
             } else {
-                SendMessage sendMessage = createSendMessage(chats.getChat2RePostAsStr(userId), msgText);
+                SendMessage sendMessage = createSendMessage(chat2Post.chatId, msgText);
                 setButtons(data, sendMessage);
-                executeSomething(sendMessage);
+                Message executeRspns = execute(sendMessage);
+                System.out.println("response = " + executeRspns);
+                fileWorker.save(data.chatId2Store, executeRspns.getMessageId(), data);
             }
         } else if (updateIncome.hasCallbackQuery()) {
             CallbackQuery callbackQuery = updateIncome.getCallbackQuery();
             chatId = callbackQuery.getMessage().getChatId();
             messageId = callbackQuery.getMessage().getMessageId();
-            userId = Optional.ofNullable(callbackQuery.getFrom()).map(u -> u.getId()).orElse(-1);
-            System.out.println("chatId = " + chatId + ", userId = " + userId + ", name = " + callbackQuery.getFrom().getUserName());
+            userId = Optional.ofNullable(callbackQuery.getFrom()).map(User::getId).orElse(-1);
+            System.out.println("chatId = " + chatId + ", userId = " + userId + ", name = " + callbackQuery.getFrom().getUserName() + ", " +
+                    callbackQuery.getFrom().getFirstName() + " " + callbackQuery.getFrom().getLastName());
             String buttonClicked = callbackQuery.getData();
 
             // process...
-            data = fileWorker.read(chatId, messageId);
+            data = fileWorker.read(chatId, messageId).setChatId2Store(chatId);
             data.registerNewButtonClick(userId, callbackQuery.getFrom().getUserName(), buttonClicked);
 
-            if (callbackQuery.getMessage().getPhoto()!=null && !callbackQuery.getMessage().getPhoto().isEmpty()) {
+            if (callbackQuery.getMessage().getPhoto() != null && !callbackQuery.getMessage().getPhoto().isEmpty()) {
                 EditMessageMedia editMessageMedia = new EditMessageMedia()
-                    .setChatId(chatId)
-                    .setMessageId(messageId);
+                        .setChatId(chatId)
+                        .setMessageId(messageId);
                 InputMediaPhoto media = new InputMediaPhoto();
                 media.setMedia(callbackQuery.getMessage().getPhoto().get(0).getFileId());
                 editMessageMedia.setMedia(media);
                 setButtons(data, editMessageMedia);
-                executeSomething(editMessageMedia);
+                execute(editMessageMedia);
             } else {
                 EditMessageText editMessageText = new EditMessageText();
                 editMessageText.setMessageId(messageId);
                 editMessageText.setChatId(chatId);
                 editMessageText.setText(callbackQuery.getMessage().getText());
                 setButtons(data, editMessageText);
-                executeSomething(editMessageText);
+                execute(editMessageText);
             }
+            fileWorker.save(data.chatId2Store, messageId, data);
         } else {
             throw new IgnoreException("Ignore anything different for now...");
         }
-        fileWorker.save(chatId+"", messageId, data);
+    }
+
+    private List<String> getButtonsFromText(String smilesRaw) {
+        System.out.println("\tsmilesRaw = '" + smilesRaw + "'");
+        List<String> buttons = new ArrayList<>();
+        String[] s = smilesRaw.split(" ");
+        for (int i = 0; i < s.length; i++) {
+            s[i] = s[i].trim();
+            if (!s[i].equals(" ") && !s[i].isEmpty()) {
+                buttons.add(s[i]);
+            }
+        }
+        System.out.println("\tbuttons = " + buttons);
+        return buttons;
     }
 
     private void setButtons(MsgData data, Object event) {
@@ -169,13 +229,13 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         }
         buttons.add(buttonsList);
         InlineKeyboardMarkup replyMarkup = new InlineKeyboardMarkup().setKeyboard(buttons);
-        if(event instanceof EditMessageText) { //WTF?
-            ((EditMessageText)event).setReplyMarkup(replyMarkup);
-        } else if(event instanceof SendMessage) {
-            ((SendMessage)event).setReplyMarkup(replyMarkup);
-        } else if(event instanceof SendPhoto) {
-            ((SendPhoto)event).setReplyMarkup(replyMarkup);
-        } else if(event instanceof EditMessageMedia) {
+        if (event instanceof EditMessageText) { //WTF?
+            ((EditMessageText) event).setReplyMarkup(replyMarkup);
+        } else if (event instanceof SendMessage) {
+            ((SendMessage) event).setReplyMarkup(replyMarkup);
+        } else if (event instanceof SendPhoto) {
+            ((SendPhoto) event).setReplyMarkup(replyMarkup);
+        } else if (event instanceof EditMessageMedia) {
             ((EditMessageMedia) event).setReplyMarkup(replyMarkup);
         }
     }
@@ -189,30 +249,49 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         }
     }
 
-    private SendPhoto createSendPhoto(String chatId, File file) {
+    private SendPhoto createSendPhoto(long chatId, File file) {
         return new SendPhoto()
-                    .setChatId(chatId)
-                    .setPhoto(file);
+                .setChatId(chatId)
+                .setPhoto(file);
     }
 
-    private void executeSomething(PartialBotApiMethod msg) {
-        try {
-            if(msg instanceof EditMessageMedia) { //TODO WTF?
-                execute((EditMessageMedia)msg);
-            } else if(msg instanceof EditMessageText) {
-                execute((EditMessageText)msg);
-            } else if(msg instanceof SendPhoto) {
-                execute((SendPhoto)msg);
-            } else if(msg instanceof SendMessage){
-                execute((SendMessage)msg);
-            } else {
-                System.err.println("!!!!");
-            }
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
+//    private void executeSomething(PartialBotApiMethod msg) {
+//        executeSomethingAsync(msg, new SentCallback() {
+//            @Override
+//            public void onResult(BotApiMethod method, Serializable response) {
+//
+//            }
+//
+//            @Override
+//            public void onError(BotApiMethod method, TelegramApiRequestException apiException) {
+//
+//            }
+//
+//            @Override
+//            public void onException(BotApiMethod method, Exception exception) {
+//
+//            }
+//        });
+//    }
+//
+//    private void executeSomethingAsync(PartialBotApiMethod msg, SentCallback callback) {
+//        try {
+//            if(msg instanceof EditMessageMedia) { //TODO WTF?
+//                executeAsync(msg, callback);
+//            } else if(msg instanceof EditMessageText) {
+//                executeAsync(msg, callback);
+//            } else if(msg instanceof SendPhoto) {
+//                executeAsync(msg, callback);
+//            } else if(msg instanceof SendMessage){
+//                executeAsync(msg, callback);
+//            } else {
+//                System.err.println("!!!!");
+//            }
+//        } catch (TelegramApiException e) {
+//            e.printStackTrace();
+//            throw new RuntimeException(e);
+//        }
+//    }
 
     private void executeSomething(SendMessage msg) {
         try {
@@ -231,7 +310,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         }
     }
 
-    private SendMessage createSendMessage(String chatId, String msg) {
+    private SendMessage createSendMessage(long chatId, String msg) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableNotification();
         sendMessage.enableMarkdown(true);

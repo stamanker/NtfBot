@@ -1,16 +1,33 @@
 package ua.stamanker.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.*;
 
 import static ua.stamanker.Emoji.*;
 
 public class MsgData {
 
+    //TODO date format
     public Date created;
 
     public Map<String, Integer> buttons = new LinkedHashMap<>();
     public Map<String, Set<String>> userReactions = new HashMap<>();
     public Set<String> voters = new HashSet<>();
+
+    @JsonIgnore
+    public Long chatId2Store;
+
+    public MsgData() {
+    }
+
+    public MsgData initButtons(List<String> btns) {
+        created = new Date();
+        for (String button : btns) {
+            buttons.put(button, 0);
+        }
+        return this;
+    }
 
     public MsgData init() {
         created = new Date();
@@ -25,6 +42,7 @@ public class MsgData {
     }
 
     public void registerNewButtonClick(Integer userId, String username, String buttonClicked) {
+        System.out.println("userId = [" + userId + "], username = [" + username + "], buttonClicked = [" + buttonClicked + "]");
         voters.add(username);
         Set<String> userButtonClicked = userReactions.computeIfAbsent("user-" + userId, x -> new HashSet<>());
         if(true) { //user can vote only for 1 button
@@ -55,5 +73,10 @@ public class MsgData {
 
     public List<Map.Entry<String, Integer>> getButtonsAndCount() {
         return new ArrayList<>(buttons.entrySet());
+    }
+
+    public MsgData setChatId2Store(Long v) {
+        this.chatId2Store = v;
+        return this;
     }
 }
