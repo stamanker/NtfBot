@@ -33,28 +33,16 @@ public class MsgData {
                 String wasBefore = iterator.next();
                 iterator.remove();
                 System.out.println("wasBefore = " + wasBefore + " buttonClicked = " + buttonClicked);
-                buttons.compute(wasBefore, (x, v) -> {
-                    System.out.println("x = " + x);
-                    System.out.println("v = " + v);
-                    return --v;
-                });
+                buttons.compute(wasBefore, (x, v) -> --v);
                 if(!wasBefore.equals(buttonClicked)) {
                     userButtonClicked.add(buttonClicked);
-                    buttons.compute(buttonClicked, (x, v) -> {
-                        System.out.println("x = " + x);
-                        System.out.println("v = " + v);
-                        return ++v;
-                    });
+                    buttons.compute(buttonClicked, (x, v) -> ++v);
                 }
             } else {
                 userButtonClicked.add(buttonClicked);
-                buttons.compute(buttonClicked, (x, v) -> {
-                    System.out.println("x = " + x);
-                    System.out.println("v = " + v);
-                    return ++v;
-                });
+                buttons.compute(buttonClicked, (x, v) -> ++v);
             }
-        } else {
+        } else { //user can vote for all buttons
             if (userButtonClicked.contains(buttonClicked)) {
                 userButtonClicked.remove(buttonClicked);
                 buttons.put(buttonClicked, buttons.get(buttonClicked) - 1);

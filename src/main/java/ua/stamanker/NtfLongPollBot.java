@@ -1,6 +1,5 @@
 package ua.stamanker;
 
-import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -79,6 +78,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     }
 
     public synchronized void processUpdateReceived(Update updateIncome) throws Exception {
+        System.out.println(new Date());
         MsgData data;
         Integer messageId;
         Long chatId;
@@ -90,7 +90,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             System.out.println("chatId = " + chatId + " / " + chats.getChatById(chatId));
             data = new MsgData().init();
             if(message1.getChatId() != botPrivatechatId) {
-                throw new IgnoreException("# ignore other chat: " + chatId);
+                throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatById(chatId));
             }
             if (message1.hasPhoto()) {
                 int num = message1.getPhoto().size();
@@ -270,12 +270,12 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "";
+        return "Nuttyfi";
     }
 
     @Override
     public String getBotToken() {
-        return "";
+        return "675917208:AAExq8Jt51Qefj4JSnU0Zu8L3ZA0a6MGZ6E";
     }
 
     @Override
