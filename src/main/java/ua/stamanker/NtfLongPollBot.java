@@ -28,10 +28,9 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-import static ua.stamanker.Chats.botPrivatechatId;
-
 public class NtfLongPollBot extends TelegramLongPollingBot {
 
+    public static final String COMMAND_2CHAT = "2chat:";
     private final Settings settings;
     private final Chats chats;
     private final FileWorker fileWorker;
@@ -92,15 +91,15 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             messageId = updateIncome.getMessage().getMessageId();
             userId = updateIncome.getMessage().getFrom().getId();
             chatId = updateIncome.getMessage().getChatId();
-            if(msgText!=null && msgText.startsWith("to ")) {
-                String chat2Store = Utils.getAfter(msgText, "to ");
+            if(chats.isPrivateBotChat(chatId) && msgText!=null && msgText.startsWith(COMMAND_2CHAT)) {
+                String chat2Store = Utils.getAfter(msgText, COMMAND_2CHAT);
                 chats.storePost2ChatSetting(userId, chat2Store);
                 return;
             }
-            System.out.println("chatId = " + chatId + " / " + chats.getChatById(chatId));
+            System.out.println("chatId = " + chatId + " / " + chats.getChatNameById(chatId));
             data = new MsgData().init();
-            if(message1.getChatId() != botPrivatechatId) {
-                throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatById(chatId));
+            if(message1.getChatId() != chats.getPrivateChatId()) {
+                throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatNameById(chatId));
             }
             if (message1.hasPhoto()) {
                 int num = message1.getPhoto().size();
