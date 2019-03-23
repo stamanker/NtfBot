@@ -22,9 +22,9 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 import org.telegram.telegrambots.meta.updateshandlers.SentCallback;
 import ua.stamanker.entities.MsgData;
+import ua.stamanker.entities.Settings;
 
 import java.io.*;
-import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -33,10 +33,14 @@ import static ua.stamanker.Chats.chatId2Post2;
 
 public class NtfLongPollBot extends TelegramLongPollingBot {
 
-    private Chats chats;
+    private final Settings settings;
+    private final Chats chats;
+    private final FileWorker fileWorker;
 
-    public NtfLongPollBot(Chats chats) {
+    public NtfLongPollBot(Chats chats, FileWorker fileWorker, Settings settings) {
         this.chats = chats;
+        this.fileWorker = fileWorker;
+        this.settings = settings;
     }
 
     @Override
@@ -122,8 +126,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             String buttonClicked = callbackQuery.getData();
 
             // process...
-            new File(chatId+"").mkdir();
-            data = read(chatId+"", messageId);
+            data = fileWorker.read(chatId, messageId);
             data.registerNewButtonClick(userId, callbackQuery.getFrom().getUserName(), buttonClicked);
 
             if (callbackQuery.getMessage().getPhoto()!=null && !callbackQuery.getMessage().getPhoto().isEmpty()) {
@@ -146,7 +149,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         } else {
             throw new IgnoreException("Ignore anything different for now...");
         }
-        save(chatId+"", messageId, data);
+        fileWorker.save(chatId+"", messageId, data);
     }
 
     private void setButtons(MsgData data, Object event) {
@@ -169,25 +172,6 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             ((SendPhoto)event).setReplyMarkup(replyMarkup);
         } else if(event instanceof EditMessageMedia) {
             ((EditMessageMedia) event).setReplyMarkup(replyMarkup);
-        }
-    }
-
-    private void save(String chatDir, Integer msgId, MsgData data) throws IOException {
-        String dataTxt = Application.OBJECTMAPPER.writeValueAsString(data);
-        Files.write(Paths.get(chatDir + "/" + msgId + ".json"),dataTxt.getBytes(),
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE
-        );
-    }
-
-    private MsgData read (String chatDir, Integer messageId) throws IOException {
-        try {
-            byte[] bytes = Files.readAllBytes(Paths.get(chatDir + "/" + messageId + ".json"));
-            String s = new String(bytes);
-            return Application.OBJECTMAPPER.readValue(s, MsgData.class);
-        } catch (FileNotFoundException | NoSuchFileException fnfe) {
-            return new MsgData().init();
         }
     }
 
@@ -270,12 +254,12 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "";
+        return settings.botUsername;
     }
 
     @Override
     public String getBotToken() {
-        return "";
+        return settings.botToken;
     }
 
     @Override
