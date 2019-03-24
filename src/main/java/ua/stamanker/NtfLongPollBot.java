@@ -259,23 +259,27 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     }
 
     private void setButtons(MsgData data, Object event) {
-        List<List<InlineKeyboardButton>> buttonsL = new ArrayList<>();
-        List<InlineKeyboardButton> buttonsList = null;
+        List<List<InlineKeyboardButton>> buttonsRows = new ArrayList<>();
+        List<InlineKeyboardButton> row = null;
         List<Map.Entry<String, Integer>> buttons = data.getButtonsAndCount();
         for (int i = 0; i < buttons.size(); i++) {
-            if(i%3==0) {
-                if(buttonsList!=null) {
-                    buttonsL.add(buttonsList);
+            if (buttons.size()==4) {
+                if(row==null) {
+                    row = new ArrayList<>();
+                    buttonsRows.add(row);
                 }
-                buttonsList = new ArrayList<>();
+            } else {
+                if (i % 3 == 0) {
+                    row = new ArrayList<>();
+                    buttonsRows.add(row);
+                }
             }
             Map.Entry<String, Integer> btn = buttons.get(i);
             Integer value = btn.getValue();
             String text = btn.getKey() + " " + (value == 0 ? "" : value);
-            buttonsList.add(new InlineKeyboardButton(text).setCallbackData(btn.getKey()));
+            row.add(new InlineKeyboardButton(text).setCallbackData(btn.getKey()));
         }
-        buttonsL.add(buttonsList);
-        InlineKeyboardMarkup replyMarkup = new InlineKeyboardMarkup().setKeyboard(buttonsL);
+        InlineKeyboardMarkup replyMarkup = new InlineKeyboardMarkup().setKeyboard(buttonsRows);
         if (event instanceof EditMessageText) { //WTF?
             ((EditMessageText) event).setReplyMarkup(replyMarkup);
         } else if (event instanceof SendMessage) {
