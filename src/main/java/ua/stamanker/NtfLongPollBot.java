@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
 public class NtfLongPollBot extends TelegramLongPollingBot {
 
     public static final String COMMAND_2CHAT = "/chat:";
-    public static final String SET_BUTTONS = "/set buttons:";
+    public static final String SET_BUTTONS = "/b ";
     public static final String SET_BUTTONS_DFLT = "/set buttons default:";
     private final Settings settings;
     private final Chats chats;
@@ -47,7 +47,9 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update updateIncome) {
         try {
+            long start = System.currentTimeMillis();
             processUpdateReceived(updateIncome);
+            System.out.println("    = " + String.format("%,3d", System.currentTimeMillis() - start));
             //getInfoAboutMe();
         } catch (IgnoreException ice) {
             System.err.println(ice.getMessage());
@@ -98,7 +100,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             if (msgText != null && msgText.startsWith("/")) {
                 System.out.println(msgText);
                 String responseMsg;
-                if (msgText.startsWith("/b")) {
+                if (msgText.startsWith("/?")) {
                     responseMsg = "Chat current 4 repost: \n" + chats.getChat4User(userId);
                     SendMessage sendMessage = createSendMessage(chatId, responseMsg);
                     addButtons(sendMessage, chats.getChat4User(userId));
@@ -109,8 +111,8 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                     chats.store2Post(userId, chat2Store, null);
                     responseMsg = "Accepted: will send next message to chat " + chat2Store + "/" + chats.getChatNameById(chat2Store);
                 } else if (msgText.startsWith(SET_BUTTONS)) {
-                    String smilesRaw = Utils.getAfter(msgText, SET_BUTTONS);
-                    List<String> buttons = getButtonsFromText(smilesRaw);
+                    String btnRaw = Utils.getAfter(msgText, SET_BUTTONS);
+                    List<String> buttons = getButtonsFromText(btnRaw);
                     chats.store2Post(userId, null, buttons);
                     responseMsg = "Set buttons for next post from " + message1.getFrom() + "/" + message1.getFrom().getUserName() + ": " + buttons + ";" + chats.getChat2RePost(userId);
                 } else if (msgText.startsWith(SET_BUTTONS_DFLT)) {
