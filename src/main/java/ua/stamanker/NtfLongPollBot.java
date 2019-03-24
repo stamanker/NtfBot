@@ -93,10 +93,10 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
         Integer userId;
         if (updateIncome.hasMessage()) {
             Message message1 = updateIncome.getMessage();
-            System.out.println("message = " + message1);
             String msgText = message1.getText();
             userId = message1.getFrom().getId();
             chatId = message1.getChatId();
+            System.out.println("chatId = " + chatId + " / " + chats.getChatNameById(chatId)+", message = " + message1);
             if (msgText != null && msgText.startsWith("/")) {
                 System.out.println(msgText);
                 String responseMsg;
@@ -126,7 +126,6 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                 execute(createSendMessage(chatId, responseMsg));
                 return;
             }
-            System.out.println("chatId = " + chatId + " / " + chats.getChatNameById(chatId));
             if (message1.getChatId() == -1001122538376L) {
                 throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatNameById(chatId));
             }
@@ -142,9 +141,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                 SendPhoto sendPhoto = createSendPhoto(chat2Post.chatId, f);
                 setButtons(data, sendPhoto);
                 executeRspns = execute(sendPhoto);
-                if (!f.delete()) {
-                    System.err.println("\tFile not deleted: " + f.getAbsolutePath());
-                }
+                deletePhoto(f);
             } else if(message1.hasAnimation()) {
                 System.out.println("message1 = " + message1);
                 SendDocument sendDocument = new SendDocument()
@@ -208,7 +205,6 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                     setButtons(data, editObject);
                     execute(editObject);
                 } else if (message.hasVideo()) {
-                    System.out.println("\tvideo = " + message.getVideo().getFileId());
                     EditMessageMedia editObject = new EditMessageMedia().setChatId(chatId).setMessageId(messageId);
                     editObject.setMedia(
                             new InputMediaVideo().setMedia(message.getVideo().getFileId())
@@ -227,6 +223,12 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             fileWorker.save(data.chatId2Store, messageId, data);
         } else {
             throw new IgnoreException("*** Ignore anything different for now...");
+        }
+    }
+
+    private void deletePhoto(File f) {
+        if (!f.delete()) {
+            System.err.println("\tFile not deleted: " + f.getAbsolutePath());
         }
     }
 

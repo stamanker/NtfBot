@@ -26,10 +26,12 @@ public class FileWorker {
     }
 
     public void save(long chatId, Integer msgId, Object data) {
+        long start = System.currentTimeMillis();
         if(data instanceof MsgData) {
             ((MsgData) data).updated = new Date();
         }
         save(chatId+"", msgId+"", data);
+        System.out.println("\tsave took " + String.format("%,3d", System.currentTimeMillis() - start));
     }
 
     public void save(String subDir, String fileName, Object data) {
