@@ -1,23 +1,8 @@
 package ua.stamanker;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.entity.BufferedHttpEntity;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.util.EntityUtils;
-import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.facilities.TelegramHttpClientBuilder;
-import org.telegram.telegrambots.meta.ApiContext;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
-import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageMedia;
@@ -28,6 +13,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaDocument;
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto;
+import org.telegram.telegrambots.meta.api.objects.media.InputMediaVideo;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -168,12 +154,20 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
 //                sendAnimation.setAnimation(message1.getVideo().getFileId());
 //                setButtons(data, sendAnimation);
 //                executeRspns = execute(sendAnimation);
+            } else if(message1.hasDocument()) {
+                SendDocument sendDocument = new SendDocument().setChatId(chat2Post.chatId);
+                setButtons(data, sendDocument);
+                executeRspns = execute(sendDocument);
+            } else if(message1.hasVideo()) {
+                SendVideo sendVideo = new SendVideo().setChatId(chat2Post.chatId).setVideo(message1.getVideo().getFileId());
+                setButtons(data, sendVideo);
+                executeRspns = execute(sendVideo);
             } else {
                 SendMessage sendMessage = createSendMessage(chat2Post.chatId, msgText);
                 setButtons(data, sendMessage);
                 executeRspns = execute(sendMessage);
-                System.out.println("\tresponse = " + executeRspns);
             }
+            System.out.println("\tresponse = " + executeRspns);
             fileWorker.save(data.chatId2Store, executeRspns.getMessageId(), data);
         } else if (updateIncome.hasCallbackQuery()) {
             CallbackQuery callbackQuery = updateIncome.getCallbackQuery();
@@ -215,7 +209,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                     System.out.println("\tvideo = " + message.getVideo().getFileId());
                     EditMessageMedia editObject = new EditMessageMedia().setChatId(chatId).setMessageId(messageId);
                     editObject.setMedia(
-                            new InputMediaDocument().setMedia(message.getVideo().getFileId())
+                            new InputMediaVideo().setMedia(message.getVideo().getFileId())
                     );
                     setButtons(data, editObject);
                     execute(editObject);
