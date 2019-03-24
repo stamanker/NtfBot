@@ -74,6 +74,7 @@ public class MsgData {
         }
     }
 
+    @JsonIgnore
     public List<Map.Entry<String, Integer>> getButtonsAndCount() {
         return new ArrayList<>(buttons.entrySet());
     }

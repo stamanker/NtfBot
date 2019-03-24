@@ -1,11 +1,13 @@
 package ua.stamanker;
 
+import ua.stamanker.entities.ChatInfo;
 import ua.stamanker.entities.ChatInfoUknown;
 import ua.stamanker.entities.Settings;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class Chats {
 
@@ -17,7 +19,7 @@ public class Chats {
             this.buttons = buttons;
         }
         @Override
-        public String toString() { return "X{ chatId=" + chatId + ", smiles=" + buttons + '}'; }
+        public String toString() { return "Chat2RePost{chatId=" + chatId + ",buttons=" + buttons + '}'; }
     }
 
     private Map<Integer, X> chat2PostNextMessageBy = new HashMap<>();
@@ -56,6 +58,11 @@ public class Chats {
         return settings.chatIdNames.values().stream().filter(c->c.isDefault).findFirst().map(c->c.chatId).orElse(-1L);
     }
 
+    public ChatInfo getChat4User(int userId) {
+        long cId = Optional.ofNullable(chat2PostNextMessageBy.get(userId)).map(x->x.chatId).orElse(getDefaultChatId());
+        return settings.chatIdNames.get(cId);
+    }
+
     public X getChat2RePost(int userId) {
         X x = chat2PostNextMessageBy.computeIfAbsent(userId, u ->
                 new X(
@@ -63,7 +70,7 @@ public class Chats {
                         settings.chatIdNames.get(getDefaultChatId()).buttons
                 )
         );
-        System.out.println("x1 = " + x);
+        System.out.println("Chat2RePost = " + x);
         return x;
     }
 
