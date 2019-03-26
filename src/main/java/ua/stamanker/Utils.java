@@ -29,4 +29,12 @@ public class Utils {
         }
         return data;
     }
+
+    public static String getAfterLast(String data, String a) {
+        int i = data.lastIndexOf(a);
+        if(i>-1) {
+            return data.substring(i+a.length());
+        }
+        return data;
+    }
 }

@@ -9,13 +9,11 @@ import ua.stamanker.entities.Settings;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class FileWorker {
 
@@ -45,15 +43,25 @@ public class FileWorker {
         }
     }
 
-    private void writeFile(String subDir, Integer fileName, String data) {
-        String first = DATA_Dir;
-        if(subDir!=null) {
-            first += "/" + subDir;
+    private void writeFile(String chatId, Integer fileName, String data) {
+        List<String> subDirs = getFileDir(chatId, fileName);
+        String path = "";
+        for (String dir : subDirs) {
+            path = path + dir + "/";
+            File d = new File(path);
+            if(!d.exists()) {
+                d.mkdir();
+            }
         }
-        new File(first).mkdir();
-        List<String> subDirs = getSubDirs(fileName);//TODO!!!!
-        first += "/" + fileName + EXT;
-        writeFile(data, first);
+        path = path + fileName + EXT;
+        writeFile(data, path);
+    }
+
+    private List<String> getFileDir(String subDir, Integer fileName) {
+        List<String> subDirs = getSubDirs(fileName);
+        subDirs.add(0, subDir);
+        subDirs.add(0, DATA_Dir);
+        return subDirs;
     }
 
     private void writeFile(String data, String path) {
@@ -63,6 +71,7 @@ public class FileWorker {
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE
             );
+            System.out.println("File written: " + path);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -70,17 +79,19 @@ public class FileWorker {
 
     public static List<String> getSubDirs(Integer fileNumber) {
         List<String> result = new ArrayList<>();
-        int n = 1000_000;
+        int n = 100_000;
         int x;
         do {
             x = fileNumber / n;
+            String value;
             if(x==0) {
-                result.add(n + "");
+                value = n + "";
             } else {
-                result.add( (x * n)+"" );
+                value = (++x * n) + "";
             }
+            result.add(value);
             n = n / 10;
-        } while (x < 100);
+        } while (n > 10);
         return result;
     }
 
@@ -91,8 +102,9 @@ public class FileWorker {
     public MsgData read (long chatId, Integer messageId) {
         long start = System.currentTimeMillis();
         try {
-            String chatDir = chatId + "";
-            byte[] bytes = Files.readAllBytes(Paths.get(DATA_Dir + "/" + chatDir + "/" + messageId + EXT));
+            String path = getFileDir(chatId + "", messageId).stream().collect(Collectors.joining("/"));
+            System.out.println("path2Read = " + path);
+            byte[] bytes = Files.readAllBytes(Paths.get(path + "/" + messageId + EXT));
             String s = new String(bytes);
             return deserialize(s, MsgData.class);
         } catch (FileNotFoundException | NoSuchFileException fnfe) {
