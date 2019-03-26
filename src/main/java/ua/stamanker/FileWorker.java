@@ -13,13 +13,15 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class FileWorker {
 
     public static final String EXT = ".json";
     public static ObjectMapper OBJECTMAPPER;
-    public static final String dataDir = "data";
+    public static final String DATA_Dir = "data";
 
     public FileWorker() {
         OBJECTMAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -30,28 +32,33 @@ public class FileWorker {
         if(data instanceof MsgData) {
             ((MsgData) data).updated = new Date();
         }
-        save(chatId+"", msgId+"", data);
-        System.out.println("\tsave took " + String.format("%,3d", System.currentTimeMillis() - start));
+        save2(chatId+"", msgId, data);
+        System.out.println("\tsave = " + String.format("%,3d", System.currentTimeMillis() - start));
     }
 
-    public void save(String subDir, String fileName, Object data) {
+    public void save2(String chatId, Integer fileName, Object data) {
         try {
             String dataTxt = OBJECTMAPPER.writeValueAsString(data);
-            writeFile(subDir, fileName, dataTxt);
+            writeFile(chatId, fileName, dataTxt);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void writeFile(String subDir, String fileName, String data) {
+    private void writeFile(String subDir, Integer fileName, String data) {
+        String first = DATA_Dir;
+        if(subDir!=null) {
+            first += "/" + subDir;
+        }
+        new File(first).mkdir();
+        List<String> subDirs = getSubDirs(fileName);//TODO!!!!
+        first += "/" + fileName + EXT;
+        writeFile(data, first);
+    }
+
+    private void writeFile(String data, String path) {
         try {
-            String first = dataDir;
-            if(subDir!=null) {
-                first += "/" + subDir;
-            }
-            new File(first).mkdir();
-            first += "/" + fileName + EXT;
-            Files.write(Paths.get(first), data.getBytes(),
+            Files.write(Paths.get(path), data.getBytes(),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE
@@ -61,16 +68,39 @@ public class FileWorker {
         }
     }
 
+    public static List<String> getSubDirs(Integer fileNumber) {
+        List<String> result = new ArrayList<>();
+        int n = 1000_000;
+        int x;
+        do {
+            x = fileNumber / n;
+            if(x==0) {
+                result.add(n + "");
+            } else {
+                result.add( (x * n)+"" );
+            }
+            n = n / 10;
+        } while (x < 100);
+        return result;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(getSubDirs(24_533));
+    }
+
     public MsgData read (long chatId, Integer messageId) {
+        long start = System.currentTimeMillis();
         try {
             String chatDir = chatId + "";
-            byte[] bytes = Files.readAllBytes(Paths.get(dataDir + "/" + chatDir + "/" + messageId + EXT));
+            byte[] bytes = Files.readAllBytes(Paths.get(DATA_Dir + "/" + chatDir + "/" + messageId + EXT));
             String s = new String(bytes);
             return deserialize(s, MsgData.class);
         } catch (FileNotFoundException | NoSuchFileException fnfe) {
             return null;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            System.out.println("\tread = " + String.format("%,3d", System.currentTimeMillis() - start));
         }
     }
 
@@ -78,24 +108,35 @@ public class FileWorker {
         return OBJECTMAPPER.readValue(s, c);
     }
 
-    public Settings readSettings() {
-        String settingsPath = String.format("%s/settings%s", dataDir, EXT);
+    private String serialize(Object data) {
         try {
-            String json = new String(Files.readAllBytes(Paths.get(settingsPath)));
+            return OBJECTMAPPER.writeValueAsString(data);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Settings readSettings() {
+        try {
+            String json = new String(Files.readAllBytes(Paths.get(getSettingsPath())));
             return deserialize(json, Settings.class);
         } catch (IOException e) {
             System.err.println("*** Error while reading settings: " + e.getMessage());
             Settings settings = new Settings();
-            save(null, "settings", settings);
+            saveSettings(settings);
             return settings;
         }
     }
 
+    private String getSettingsPath() {
+        return String.format("%s/settings%s", DATA_Dir, EXT);
+    }
+
     public void saveSettings(Settings settings) {
         try {
-            String json = OBJECTMAPPER.writeValueAsString(settings);
-            writeFile(null, "settings", json);
-        } catch (IOException e) {
+            String json = serialize(settings);
+            writeFile(json, getSettingsPath());
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
