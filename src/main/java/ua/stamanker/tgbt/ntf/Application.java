@@ -1,9 +1,9 @@
-package ua.stamanker;
+package ua.stamanker.tgbt.ntf;
 
 import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
-import ua.stamanker.entities.Settings;
+import ua.stamanker.tgbt.ntf.entities.Settings;
 
 public class Application {
 

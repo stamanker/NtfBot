@@ -1,4 +1,4 @@
-package ua.stamanker;
+package ua.stamanker.tgbt.ntf;
 
 /**
  * https://apps.timwhitlock.info/emoji/tables/unicode

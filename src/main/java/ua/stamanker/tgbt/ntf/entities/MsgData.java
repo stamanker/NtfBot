@@ -1,11 +1,11 @@
-package ua.stamanker.entities;
+package ua.stamanker.tgbt.ntf.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.*;
 
-import static ua.stamanker.Emoji.*;
+import static ua.stamanker.tgbt.ntf.Emoji.*;
 
 public class MsgData {
 

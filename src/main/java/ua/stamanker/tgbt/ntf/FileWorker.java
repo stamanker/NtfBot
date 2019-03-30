@@ -1,10 +1,10 @@
-package ua.stamanker;
+package ua.stamanker.tgbt.ntf;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import ua.stamanker.entities.MsgData;
-import ua.stamanker.entities.Settings;
+import ua.stamanker.tgbt.ntf.entities.MsgData;
+import ua.stamanker.tgbt.ntf.entities.Settings;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -95,7 +95,7 @@ public class FileWorker {
         return result;
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         FileWorker fileWorker = new FileWorker();
         String chatId = "-1001287571102";
         String[] list = new File(DATA_Dir + "/" + chatId).list();

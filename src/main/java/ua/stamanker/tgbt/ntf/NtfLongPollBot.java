@@ -1,4 +1,4 @@
-package ua.stamanker;
+package ua.stamanker.tgbt.ntf;
 
 import org.apache.commons.io.FileUtils;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -22,9 +22,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 import org.telegram.telegrambots.meta.updateshandlers.SentCallback;
-import ua.stamanker.entities.ChatInfo;
-import ua.stamanker.entities.MsgData;
-import ua.stamanker.entities.Settings;
+import ua.stamanker.tgbt.ntf.entities.ChatInfo;
+import ua.stamanker.tgbt.ntf.entities.MsgData;
+import ua.stamanker.tgbt.ntf.entities.Settings;
 
 import java.io.*;
 import java.net.URL;

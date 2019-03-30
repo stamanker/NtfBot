@@ -1,4 +1,4 @@
-package ua.stamanker.entities;
+package ua.stamanker.tgbt.ntf.entities;
 
 public class ChatInfoUknown extends ChatInfo {
     public ChatInfoUknown() {

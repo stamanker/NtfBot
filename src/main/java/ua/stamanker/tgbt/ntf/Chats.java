@@ -1,8 +1,8 @@
-package ua.stamanker;
+package ua.stamanker.tgbt.ntf;
 
-import ua.stamanker.entities.ChatInfo;
-import ua.stamanker.entities.ChatInfoUknown;
-import ua.stamanker.entities.Settings;
+import ua.stamanker.tgbt.ntf.entities.ChatInfo;
+import ua.stamanker.tgbt.ntf.entities.ChatInfoUknown;
+import ua.stamanker.tgbt.ntf.entities.Settings;
 
 import java.util.HashMap;
 import java.util.List;

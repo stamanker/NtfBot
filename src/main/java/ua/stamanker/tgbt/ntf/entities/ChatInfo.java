@@ -1,4 +1,4 @@
-package ua.stamanker.entities;
+package ua.stamanker.tgbt.ntf.entities;
 
 import java.util.List;
 
