@@ -1,5 +1,6 @@
 package ua.stamanker;
 
+import org.apache.commons.io.FileUtils;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -26,6 +27,7 @@ import ua.stamanker.entities.MsgData;
 import ua.stamanker.entities.Settings;
 
 import java.io.*;
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -34,6 +36,7 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
     public static final String COMMAND_2CHAT = "/chat:";
     public static final String SET_BUTTONS = "/b ";
     public static final String SET_BUTTONS_DFLT = "/set buttons default:";
+    public static final Random RANDOM = new Random();
     private final Settings settings;
     private final Chats chats;
     private final FileWorker fileWorker;
@@ -100,12 +103,39 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
             if (msgText != null && msgText.startsWith("/")) {
                 System.out.println(msgText);
                 String responseMsg;
+                if (msgText.equals("/random/iztsin")) {
+                    String url = "https://www.astrocentr.ru/index.php?przd=izin&str=hek&id="+(RANDOM.nextInt(63)+1);
+                    SendMessage sendMessage = createSendMessage(chatId, url);
+                    addButtons(sendMessage, chats.getChat4User(userId));
+                    execute(sendMessage);
+                    return;
+                }
+                if (msgText.equals("/random/pic")) {
+                    String flName = UUID.randomUUID().toString();
+                    java.io.File output = java.io.File.createTempFile(flName, ".tmp");
+                    FileUtils.copyURLToFile(new URL("https://source.unsplash.com/random/640x480"), output);
+                    SendPhoto sendPhoto = createSendPhoto(chatId, output);
+                    execute(sendPhoto);
+                    return;
+                }
+                if (msgText.equals("/random/num")) {
+                    SendMessage sendMessage = createSendMessage(chatId, RANDOM.nextInt(100)+"");
+                    addButtons(sendMessage, chats.getChat4User(userId));
+                    execute(sendMessage);
+                    return;
+                }
+                if (chatId == -1001122538376L) {
+                    throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatNameById(chatId));
+                }
+                if(userId==204614952 || userId==74610271) {
+                    throw new IgnoreException("Ignore user " + message1.getFrom());
+                }
+
                 if (msgText.startsWith("/?")) {
                     responseMsg = "Chat current 4 repost: \n" + chats.getChat4User(userId);
                     SendMessage sendMessage = createSendMessage(chatId, responseMsg);
                     addButtons(sendMessage, chats.getChat4User(userId));
                     execute(sendMessage);
-                    return;//TODO!!!
                 } else if (msgText.startsWith(COMMAND_2CHAT)) {
                     long chat2Store = Long.parseLong(Utils.getAfter(msgText, COMMAND_2CHAT).trim());
                     chats.store2Post(userId, chat2Store, null);
@@ -126,13 +156,17 @@ public class NtfLongPollBot extends TelegramLongPollingBot {
                 execute(createSendMessage(chatId, responseMsg));
                 return;
             }
-            if (message1.getChatId() == -1001122538376L) {
-                throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatNameById(chatId));
-            }
             // -------------------------------------------------------- IT'S TIME 2 REFACTOR
             Chats.X chat2Post = chats.getChat2RePostAndRemove(userId);
             data = new MsgData().initButtons(chat2Post.buttons).setChatId2Store(chat2Post.chatId);
             Message executeRspns;
+            if(userId==204614952 || userId==74610271) { //TODO duplicated
+                throw new IgnoreException("# Ignore user " + message1.getFrom());
+            }
+            if (chatId == -1001122538376L) { //TODO duplicated
+                throw new IgnoreException("# ignore other chat: " + chatId + " / " + chats.getChatNameById(chatId));
+            }
+
             if (message1.hasPhoto()) {
                 int num = message1.getPhoto().size();
                 String filePath = getFilePath(message1, num);

@@ -95,8 +95,28 @@ public class FileWorker {
         return result;
     }
 
-    public static void main(String[] args) {
-        System.out.println(getSubDirs(24_533));
+    public static void main(String[] args) throws IOException {
+        FileWorker fileWorker = new FileWorker();
+        String chatId = "-1001287571102";
+        String[] list = new File(DATA_Dir + "/" + chatId).list();
+        for (int i = 0; i < list.length; i++) {
+            String f = list[i];
+            try {
+                f = DATA_Dir + "/" + chatId + "/" + f;
+                if(!f.startsWith(DATA_Dir + "/" + chatId + "/1000")) {
+                    String data = new String(Files.readAllBytes(Paths.get(f)));
+                    Integer fileName = Integer.parseInt(Utils.getAfterLast(Utils.getBefore(f, "."), "/"));
+                    System.out.println("fileName = " + fileName);
+                    fileWorker.writeFile(chatId, fileName, data);
+                    System.out.println("pathname = " + f);
+                    new File(f).delete();
+                } else {
+
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public MsgData read (long chatId, Integer messageId) {
