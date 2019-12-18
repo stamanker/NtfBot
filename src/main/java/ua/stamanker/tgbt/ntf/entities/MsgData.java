@@ -57,11 +57,15 @@ public class MsgData {
                 buttons.compute(wasBefore, (x, v) -> --v);
                 if(!wasBefore.equals(buttonClicked)) {
                     userButtonClicked.add(buttonClicked);
-                    buttons.compute(buttonClicked, (x, v) -> ++v);
+                    buttons.compute(buttonClicked, (x, v) -> {
+                        return v==null ? 1 : ++v;
+                    });
                 }
             } else {
                 userButtonClicked.add(buttonClicked);
-                buttons.compute(buttonClicked, (x, v) -> ++v);
+                buttons.compute(buttonClicked, (x, v) -> {
+                    return v == null ? 1 : ++v;
+                });
             }
         } else { //user can vote for all buttons
             if (userButtonClicked.contains(buttonClicked)) {

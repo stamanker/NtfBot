@@ -9,11 +9,11 @@ import ua.stamanker.tgbt.ntf.entities.Settings;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class FileWorker {
 
@@ -66,7 +66,9 @@ public class FileWorker {
 
     private void writeFile(String data, String path) {
         try {
-            Files.write(Paths.get(path), data.getBytes(),
+            Files.write(
+                    Paths.get(path),
+                    data.getBytes(StandardCharsets.UTF_8),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE
@@ -122,10 +124,10 @@ public class FileWorker {
     public MsgData read (long chatId, Integer messageId) {
         long start = System.currentTimeMillis();
         try {
-            String path = getFileDir(chatId + "", messageId).stream().collect(Collectors.joining("/"));
+            String path = String.join("/", getFileDir(chatId + "", messageId));
             System.out.println("path2Read = " + path);
             byte[] bytes = Files.readAllBytes(Paths.get(path + "/" + messageId + EXT));
-            String s = new String(bytes);
+            String s = new String(bytes, StandardCharsets.UTF_8);
             return deserialize(s, MsgData.class);
         } catch (FileNotFoundException | NoSuchFileException fnfe) {
             return null;
@@ -150,7 +152,7 @@ public class FileWorker {
 
     public Settings readSettings() {
         try {
-            String json = new String(Files.readAllBytes(Paths.get(getSettingsPath())));
+            String json = new String(Files.readAllBytes(Paths.get(getSettingsPath())), StandardCharsets.UTF_8);
             return deserialize(json, Settings.class);
         } catch (IOException e) {
             System.err.println("*** Error while reading settings: " + e.getMessage());

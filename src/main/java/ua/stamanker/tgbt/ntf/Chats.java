@@ -70,7 +70,7 @@ public class Chats {
                         settings.chatIdNames.get(getDefaultChatId()).buttons
                 )
         );
-        System.out.println("Chat2RePost = " + x);
+        //System.out.println("Chat2RePost = " + x);
         return x;
     }
 
